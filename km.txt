@@ -1,0 +1,155 @@
+#include <iostream>
+#include <opencv2/core.hpp>
+#include <opencv2/highgui.hpp>
+#include <opencv2/imgproc.hpp>
+
+using namespace std;
+using namespace cv;
+
+
+void vilagosit1(Mat img) { //Miért változik az eredeti kép?
+	img = img + 100;
+}
+void vilagosit2(Mat img, Mat& dest) { //Miért kell a & jel?
+	dest = Scalar(255, 255, 255) -img;
+	//dest = 255 - img; invertált vagy dest = Scalar(255, 255, 255) -img;
+}
+
+void eloterMasolo(const cv::Mat fg, cv::Mat& bg) {
+	resize(bg, bg, fg.size());
+
+	Vec3b feher(255, 255, 255);
+	for (int i = 0; i < fg.rows; ++i) {
+		for (int j = 0; j < fg.cols; ++j) {
+			Vec3b c = fg.at<Vec3b>(i,j);
+			if (feher != c)
+			{
+				bg.at<Vec3b>(i, j) = c;
+			}
+		}
+	}
+}
+
+void narancsmasolo(const cv::Mat src, cv::Mat& dest) {
+	dest.create(src.size(), CV_8UC3);
+	dest.setTo(0);
+
+	Mat mask;
+	inRange(src, Scalar(0, 0, 150), Scalar(200, 200, 255), mask);
+	src.copyTo(dest, mask);
+
+
+
+	/*for (int i = 0; i < src.rows; ++i) {
+		for (int j = 0; j < src.cols; ++j) {
+			Vec3b c = src.at<Vec3b>(i, j);
+			if (c[2] > c[0] && c[2] > c[1]) //R - c[2]
+			{
+				dest.at<Vec3b>(i, j) = c;
+			}
+		}
+	}*/
+}
+
+int main() {
+	/*cv::Mat img = imread("logo.png");
+
+
+	//Mat black = Mat::zeros(Size(img.cols, img.rows), CV_8UC1);
+	Mat black = Mat::zeros(img.size(), CV_8UC1);
+
+	Mat black2(img.size(), CV_8UC1);
+	black2.setTo(0);
+
+	imshow("kep", img);
+	imshow("kep2", black);
+	imshow("kep3", black2);*/
+
+	/*cout << "sor: " << img.rows << endl;
+	cout << "oszlop: " << img.cols << endl;
+
+	int t = img.type();
+
+	if (t == CV_8UC1){
+		cout << "8 bites szürkeárnyalat" << endl;
+
+	}
+	else if (t == CV_8UC3) {
+		cout << "24-bit RGB" << endl;
+	}
+	else {
+		cout << "Egyéb" << endl;
+	}*/
+
+
+	//imshow("kep", img);
+	//waitKey();
+
+	//2.óra
+	/*cv::Mat img = imread("logo.png", IMREAD_GRAYSCALE);
+	imshow("kep", img);
+
+	cv:Mat img2 = img + 100;
+	imshow("fakitott", img2);*/
+
+	/*Mat img3 = cv::imread("logo.png", 0);
+	vilagosit1(img3);
+	//imshow("fako1", img3);
+	Mat dest; //A kép még üres
+	vilagosit2(img3, dest);
+	imshow("fako2", dest);
+
+
+	Mat img4 = imread("logo.png", IMREAD_COLOR);
+	if (img4.empty())
+	{
+		cout << "hol a kép?" << endl;
+		exit(-1);
+	}
+	imshow("eredeti", img4);*/
+
+	/*Mat r = imread("kurama.jpg", IMREAD_COLOR);
+	Mat h = imread("background.jpg", IMREAD_COLOR);
+
+	if (r.empty() || h.empty())
+	{
+		cout << "hol a kép?" << endl;
+		exit(-1);
+	}
+	Mat h2;
+	resize(h, h2, r.size());
+
+	double a = 0.5;
+	Mat u = a * r + (1-a) * h2;
+
+	imshow("háttér", h2);
+	imshow("rajz", r);
+	imshow("eredmeny", u);*/
+
+	/*Mat m(2, 3, CV_8UC3);
+	namedWindow("sample", WINDOW_NORMAL);
+	resizeWindow("sample", 120, 80);
+
+	m.at<Vec3b>(0, 0) = Vec3b(0, 0, 255);
+	m.at<Vec3b>(0, 1) = Vec3b(0, 255, 0);
+	m.at<Vec3b>(0, 2) = Vec3b(255, 0, 0);
+	m.at<Vec3b>(1, 0) = Vec3b(0, 0, 0);
+	m.at<Vec3b>(1, 1) = Vec3b(39, 127, 255);
+	m.at<Vec3b>(1, 2) = Vec3b(0, 255, 255);
+
+	imshow("sample", m);*/
+
+	/*Mat r = imread("kurama.jpg", IMREAD_COLOR);
+	Mat h = imread("background.jpg", IMREAD_COLOR);
+	eloterMasolo(r,h);
+	imshow("rajz", h);*/
+
+	Mat r = imread("orange1.jpg", IMREAD_COLOR);
+	Mat dest;
+	imshow("narancs",r);
+	narancsmasolo(r, dest);
+	imshow("eredmeny", dest);
+
+	waitKey();
+	return 0;
+}
