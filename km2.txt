@@ -1,0 +1,80 @@
+#include <iostream>
+#include <opencv2/core.hpp>
+#include <opencv2/highgui.hpp>
+#include <opencv2/imgproc.hpp>
+
+using namespace std;
+using namespace cv;
+
+void narancsmasoloHSV(const cv::Mat src, cv::Mat& dest) {
+	dest.create(src.size(), CV_8UC3);
+	dest.setTo(0);
+
+	Mat hsv;
+	cvtColor(src, hsv, COLOR_BGR2HSV);
+
+	for (int i = 0; i < src.rows; ++i) {
+		for (int j = 0; j < src.cols; ++j) {
+			Vec3b c = hsv.at<Vec3b>(i, j);
+			if (c[0] < 30 && c[1] > 5) { //c[0] < 30 && c[1] > 5 telítettség/szaturáció
+				dest.at<Vec3b>(i, j) = src.at<Vec3b>(i, j);
+			}
+		}
+	}
+}
+
+void narancsmasoloHSV2(const cv::Mat src, cv::Mat& dest) {
+	Mat hsv, mask;
+	cvtColor(src, hsv, cv::COLOR_BGR2HSV);
+
+	inRange(hsv, Scalar(0, 5, 0), Scalar(30, 255, 255), mask); // szaturáció, az első Scalar az alsó határ, másik a felső
+	imshow("mask", mask);
+	src.copyTo(dest, mask);
+}
+
+void converter(const cv::Mat src, cv::Mat& dest) {
+	Mat srcf;
+	src.convertTo(srcf, CV_32FC3, 1 / 255, 0);
+	cvtColor(srcf, dest, cv::COLOR_BGR2Lab);
+}
+
+double lab_diff(const cv::Mat lab1, const cv::Mat lab2) {
+	Mat diff = lab1 - lab2;
+	Mat diff2 = diff.mul(diff);
+	vector<Mat> chs;
+	split(diff2, chs); // dL da db
+	Mat E;
+	cv::sqrt(chs[0] + chs[1] + chs[2], E);
+
+	return cv::mean(E)[0];
+}
+
+int main() {
+	Mat etalon = cv::imread("padlolapok/etalon.png", IMREAD_COLOR);
+	Mat elab;
+	converter(etalon, elab);
+
+	imshow("etalon", etalon);
+
+	Mat img, ilab;
+	for (int i = 1; i <= 7; ++i) {
+		img = cv::imread("fa_" + std::to_string(i) + ".png");
+		converter(img, ilab);
+		double E = lab_diff(elab, ilab);
+		cout << i << " " << E << endl;
+		string ablaknev = "img_" + std::to_string(i);
+		imshow(ablaknev, img);
+		moveWindow(ablaknev, 200, 10 + i *60);
+	}
+
+	/*Mat r = imread("orange1.jpg", IMREAD_COLOR);
+	Mat dest;
+	imshow("narancs", r);
+	//narancsmasoloHSV(r, dest);
+	narancsmasoloHSV2(r, dest); // fekete fehér 
+	imshow("eredmeny", dest);*/
+
+	waitKey();
+
+	return 0;
+}
