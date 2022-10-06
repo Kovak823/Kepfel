@@ -1,0 +1,149 @@
+#include <iostream>
+#include <opencv2/core.hpp>
+#include <opencv2/highgui.hpp>
+#include <opencv2/imgproc.hpp>
+
+using namespace std;
+using namespace cv;
+
+
+int calc_th_value(const Mat src, float ratio = 0.1f)
+{
+	int n_fg = src.rows * src.cols * ratio; // eloter pontok elvart szama
+	Mat hist;
+
+	//Histo::calcHistoC1(src, hist);
+
+	int s = 0;
+	for (int th = 0; th < 255; ++th) 
+	{
+		s += hist.at<int>(th);
+		if (s >= n_fg)
+		{
+			return th;
+		}
+		return 0;
+	}
+}
+
+
+int main() {
+	//Mat img = cv::imread("debrecen_deep.png", IMREAD_GRAYSCALE);
+	/*Mat img = cv::imread("dog.jpg", IMREAD_GRAYSCALE);
+	imshow("img", img);
+
+
+	Mat dest;
+	threshold(img, dest, 100, 255, THRESH_TOZERO); // küszöbülés: THRESH_BINARY, vágás:THRESH_TOZERO
+
+	medianBlur(dest, dest, 3); // Rendez a medián és a középsőt választja ki
+
+	imshow("dest", dest);*/
+	
+
+	//Küszöbülés RGB képekre
+	/*Mat img = cv::imread("madar.jpg", IMREAD_COLOR); // RGB részen FONOTS!!
+	imshow("img", img);
+
+
+	vector<Mat> chs;
+	split(img, chs); //1x3 csatorna -> 3x1 csatorna
+
+	imshow("B", chs[0]);
+	imshow("G", chs[1]);
+	imshow("R", chs[2]);
+
+
+	Mat dest;
+	threshold(chs[0], dest, 120, 255, THRESH_TOZERO);
+
+	imshow("dest", dest);*/
+
+	//Sávkiemelés
+	//Mat img = cv::imread("gray_buttons.jpg", IMREAD_GRAYSCALE);
+	/*Mat gray, img = cv::imread("gray_buttons.jpg", IMREAD_COLOR);
+	cvtColor(img, gray, COLOR_BGR2GRAY);
+	imshow("img", img);
+
+	Mat mask;
+	inRange(img, 165, 213, mask);
+	medianBlur(mask, mask, 7);
+
+	Mat dest;
+	img.copyTo(dest, mask);
+
+	imshow("dest", dest);
+	imshow("mask", mask);*/
+
+	//Sávkizárás
+	/*VideoCapture cap;
+	cap.open("sas.avi");
+
+	if (!cap.isOpened())
+	{
+		cout << "Nem nyitható meg" << endl;
+		exit(-1);
+	}
+
+	Mat img, mask, gray;
+	while (1)
+	{
+		cap >> img;
+		if (img.empty())
+		{
+			break;
+		}
+
+		cvtColor(img, gray, COLOR_BGR2GRAY);
+		inRange(gray, 100, 155, mask);
+		medianBlur(mask, mask, 5);
+		img.setTo(0, mask);
+
+
+		imshow("sas", img);
+		waitKey(93);
+	}*/
+
+
+	//Sejtes kép, küszöbölés rögzített értékkel
+	/*Mat img = imread("sejtek.png", IMREAD_GRAYSCALE);
+	Mat dest;
+	int th;
+	int x = 0, y = 0;
+	for (th = 20; th < 250; th += 20)
+	{
+		string wname = "img_" + to_string(th);
+		threshold(img, dest, th, 255, THRESH_BINARY_INV);
+		namedWindow(wname, WINDOW_NORMAL);
+		imshow(wname, dest);
+
+		moveWindow(wname, x ,y);
+
+		x += img.cols/2;
+		if (x > 1000)
+		{
+			y += img.rows/2;
+			x = 0;
+		}
+
+	}*/
+
+	//+függvénnyel, 
+	/*Mat img = imread("scanned3.png", IMREAD_GRAYSCALE);
+	Mat dest;
+	int th = calc_th_value(img);
+	threshold(img, dest, th ,255, THRESH_BINARY);
+	imshow("img", img);
+	imshow("dest", dest);*/
+
+	Mat img = imread("zh.png", IMREAD_GRAYSCALE);
+	Mat dest;
+
+	adaptiveThreshold(img, dest, 255, ADAPTIVE_THRESH_MEAN_C, THRESH_BINARY, 41, 8);
+	imshow("img", img);
+	imshow("dest", dest);
+
+	waitKey();
+
+	return 0;
+}
