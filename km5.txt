@@ -1,0 +1,199 @@
+//Élkeresés
+
+#include <iostream>
+#include <opencv2/core.hpp>
+#include <opencv2/highgui.hpp>
+#include <opencv2/imgproc.hpp>
+
+using namespace std;
+using namespace cv;
+
+
+int main() {
+	//Körök
+	Mat img = imread("go2.png");
+	Mat gray;
+	cvtColor(img, gray, COLOR_BGR2GRAY);
+
+	vector<Vec3f> circles;
+
+	HoughCircles(gray, circles, HOUGH_GRADIENT, 2, 10, 80, 50, 22, 28);
+	cout << circles.size() << endl;
+
+	for (Vec3f c :circles) 
+	{
+		if (gray.at<uchar>(Point(c[0], c[1])) < 127) // vagy (int)c[1], (int)c[0])
+		{
+		circle(img, Point(c[0], c[1]), c[2], Scalar(0, 255, 0), 2);
+
+		}
+		else
+		{
+		circle(img, Point(c[0], c[1]), c[2], Scalar(0, 0, 255), 2);
+		}
+	}
+
+	imshow("img", img);
+
+	waitKey();
+
+	return 0;
+}
+
+//Kövi rész(gyak7, erózió és delitáció)
+	Mat img = imread("galaxy.jpg", IMREAD_GRAYSCALE);
+	Mat dest;
+	morphologyEx(img, dest, MORPH_TOPHAT, getStructuringElement(MORPH_RECT, Size(5, 5)));
+
+	imshow("img", img);
+	imshow("dest", dest);
+	waitKey();
+
+	return 0;
+
+	//
+	Mat img = imread("dog.jpg", IMREAD_GRAYSCALE);
+	Mat mask;
+	threshold(img, mask, 0, 255, THRESH_OTSU); // küszöb (autó köszöb)
+	medianBlur(mask, mask, 5); 
+
+	Mat dest;
+	morphologyEx(img, dest, MORPH_OPEN, getStructuringElement(MORPH_ELLIPSE, Size(5, 5)));
+
+	imshow("img", img);
+	imshow("mask", mask);
+	imshow("dest", dest);
+	waitKey();
+
+	return 0;
+	//
+	Mat img = imread("dog.jpg", IMREAD_GRAYSCALE);
+	Mat mask, mask2;
+	threshold(img, mask, 0, 255, THRESH_OTSU); // küszöb (autó köszöb) 
+
+	Mat dest;
+
+	erode(mask, mask2, getStructuringElement(MORPH_ELLIPSE, Size(5, 5)));
+	dilate(mask, dest, getStructuringElement(MORPH_ELLIPSE, Size(5, 5)));
+
+	imshow("img", img);
+	imshow("erozio", mask);
+	imshow("eredmény", mask2);
+	imshow("delitáció", dest);
+	waitKey();
+
+	return 0;
+//10. oldal 1.feladat
+	Mat img = imread("sajt.png", IMREAD_GRAYSCALE);
+	Mat mask, mask2;
+	threshold(img, mask, 250, 255, THRESH_BINARY_INV); // inverz háttér küszöb
+	medianBlur(mask, mask, 5); 
+
+	Mat mask_erodalt;
+	erode(mask, mask_erodalt, getStructuringElement(MORPH_ELLIPSE, Size(3,3)));
+	Mat dest = mask - mask_erodalt;
+
+	Mat mask_delitalt;
+	dilate(mask, mask_delitalt, getStructuringElement(MORPH_ELLIPSE, Size(3, 3)));
+	Mat dest2 = mask_delitalt - mask;
+
+	//erode(mask, mask2, getStructuringElement(MORPH_ELLIPSE, Size(5, 5))); //most csak segítség
+	//dilate(mask, dest, getStructuringElement(MORPH_ELLIPSE, Size(5, 5))); //most csak segítség
+
+	imshow("img", img);
+	imshow("binary", mask);
+	imshow("körvonal", dest);
+	imshow("körvonal", dest2);
+	waitKey();
+
+//10.oldal 2.feladat
+	Mat img = imread("sajt.png", IMREAD_GRAYSCALE);
+	Mat mask, mask2, dest, keretes;
+	threshold(img, mask, 250, 255, THRESH_BINARY_INV); // inverz háttér küszöb
+	medianBlur(mask, mask, 5);
+	
+	copyMakeBorder(mask, keretes, 100, 100, 100, 100, BORDER_CONSTANT, 0);
+
+
+	/*Mat mask_delitalt;
+	dilate(mask, mask_delitalt, getStructuringElement(MORPH_ELLIPSE, Size(59, 59)));
+	erode(mask_delitalt, dest, getStructuringElement(MORPH_ELLIPSE, Size(59, 59)));*/
+
+	Mat mask_delitalt;
+	dilate(keretes, mask_delitalt, getStructuringElement(MORPH_ELLIPSE, Size(59, 59)));
+	erode(mask_delitalt, dest, getStructuringElement(MORPH_ELLIPSE, Size(59, 59)));
+
+	Mat dest2 = dest(Rect(100, 100, img.cols, img.rows)).clone();
+
+	imshow("img", img);
+	imshow("binary", mask);
+	imshow("delital sajt kép", mask_delitalt);
+	imshow("dest2", dest2);
+	waitKey();
+
+	return 0;
+//11.oldal szitakotös feladat
+	Mat img = imread("szitakoto.jpg", IMREAD_GRAYSCALE);
+	Mat mask, mask2 ,dest;
+	threshold(img, mask, 120, 255, THRESH_BINARY_INV); // inverz háttér küszöb
+
+	erode(mask, mask2, getStructuringElement(MORPH_ELLIPSE, Size(5, 11)));
+	dilate(mask2, dest, getStructuringElement(MORPH_ELLIPSE, Size(5, 11)));
+
+	Mat dest2 = dest(Rect(img.cols/3, 0, img.cols-1 - (img.cols / 3), img.rows));
+
+	cout << countNonZero(dest2) << endl;
+
+	imshow("img", img);
+	imshow("eloter", mask);
+	imshow("erozio", mask2);
+	imshow("delitáció", dest2);
+
+	waitKey();
+
+	return 0;
+
+//12.oldal annotált sajtkép
+#include <iostream>
+#include <opencv2/core.hpp>
+#include <opencv2/highgui.hpp>
+#include <opencv2/imgproc.hpp>
+
+using namespace std;
+using namespace cv;
+
+
+int main() {
+	Mat img = imread("annotalt_sejt.png", IMREAD_GRAYSCALE);
+
+	vector<Mat> chs;
+	split(img, chs);
+
+	Mat mask, mask2;
+	threshold(chs[2], mask, 250, 255, THRESH_BINARY);
+
+	erode(mask, mask2, getStructuringElement(MORPH_CROSS, Size(3, 3)));
+
+	vector<Point> coords;
+	for ( int i = 0; i < mask.rows; ++i) 
+	{
+		for (int j = 0; j < mask.cols; ++j)
+		{
+			if (mask2.at<uchar>(i, j))
+			{
+				coords.push_back(Point(j, i));
+				drawMarker(img, Point(j, i), Scalar(0, 255, 0), MARKER_CROSS, 20);
+			}
+		}
+	}
+
+
+	imshow("img", img);
+	imshow("mask", mask);
+	imshow("mask2", mask2);
+
+
+	waitKey();
+
+	return 0;
+}
