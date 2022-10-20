@@ -1,0 +1,355 @@
+//Kontúrok, sajtos képpel
+
+
+#include <iostream>
+#include <opencv2/core.hpp>
+#include <opencv2/highgui.hpp>
+#include <opencv2/imgproc.hpp>
+
+using namespace std;
+using namespace cv;
+
+
+int main() {
+	Mat img = imread("sajt.png", IMREAD_COLOR);
+	Mat gray, mask;
+	cvtColor(img, gray, COLOR_BGR2GRAY);
+	threshold(gray, mask, 250, 255, THRESH_BINARY_INV);
+	medianBlur(mask, mask, 5);
+
+	vector<vector<Point>> cont;
+	findContours(mask, cont, RETR_EXTERNAL, CHAIN_APPROX_NONE);
+
+	Mat dest = img.clone(); // leklónozzuk az eredeti képet ,mert erre rajzalunk és nem az eredetire
+
+	drawContours(dest, cont, -1, Scalar(0, 255, 0), 2);
+
+	cout << cont.size() << endl;
+
+	imshow("img", img);
+	imshow("mask", mask);
+	imshow("mask", dest);
+
+	waitKey();
+
+	return 0;
+}
+
+//Kutya kontúr keresés
+
+#include <iostream>
+#include <opencv2/core.hpp>
+#include <opencv2/highgui.hpp>
+#include <opencv2/imgproc.hpp>
+
+using namespace std;
+using namespace cv;
+
+
+int main() {
+	Mat img = imread("dog.jpg", IMREAD_COLOR);
+	Mat gray, mask;
+	cvtColor(img, gray, COLOR_BGR2GRAY);
+	threshold(gray, mask, 120, 255, THRESH_BINARY);
+	
+
+	vector<vector<Point>> cont;
+	findContours(mask, cont, RETR_EXTERNAL, CHAIN_APPROX_NONE);
+
+	Mat dest = img.clone(); // leklónozzuk az eredeti képet ,mert erre rajzalunk és nem az eredetire
+
+	//Talán egy jó kis kontúr keresés vagy idk, de körbe lett rajzolva a kutyi más színnel is itt
+	for (int i = 0; i < cont.size(); ++i) 
+	{
+		//if (cont[i].size() > 500)
+		if(contourArea(cont[i]) > 1000)
+		{
+			drawContours(dest, cont, i, Scalar(rand() & 255, rand() & 255, rand() & 255), 2);
+		}
+	}
+
+	cout << cont.size() << endl;
+
+	imshow("img", img);
+	//imshow("mask", mask);
+	imshow("mask", dest);
+
+	waitKey();
+
+	return 0;
+}
+
+//Valami kontúr számolás
+
+#include <iostream>
+#include <opencv2/core.hpp>
+#include <opencv2/highgui.hpp>
+#include <opencv2/imgproc.hpp>
+
+using namespace std;
+using namespace cv;
+
+
+int main() {
+	Mat img = imread("objektumok.png", IMREAD_COLOR);
+	Mat gray, mask;
+	cvtColor(img, gray, COLOR_BGR2GRAY);
+	threshold(gray, mask, 120, 255, THRESH_BINARY);
+	
+
+	vector<vector<Point>> cont;
+	findContours(mask, cont, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
+
+	Mat dest = img.clone(); // leklónozzuk az eredeti képet ,mert erre rajzalunk és nem az eredetire
+
+	for (int i = 0; i < cont.size(); ++i) 
+	{
+		drawContours(dest, cont, i, Scalar(rand() & 255, rand() & 255, rand() & 255), 2);
+		putText(dest, to_string(cont[i].size()), cont[i][0], cv::FONT_HERSHEY_SIMPLEX, 1.0,Scalar(0, 255, 0));
+	}
+
+	cout << cont.size() << endl;
+
+	imshow("img", img);
+	//imshow("mask", mask);
+	imshow("mask", dest);
+
+	waitKey();
+
+	return 0;
+}
+
+//Ha tudnám itt mit csináltunk az nagyon jó lenne
+#include <iostream>
+#include <opencv2/core.hpp>
+#include <opencv2/highgui.hpp>
+#include <opencv2/imgproc.hpp>
+
+using namespace std;
+using namespace cv;
+
+
+int main() {
+	Mat img = imread("objektumok.png", IMREAD_COLOR);
+	Mat gray, mask;
+	cvtColor(img, gray, COLOR_BGR2GRAY);
+	threshold(gray, mask, 120, 255, THRESH_BINARY);
+	
+
+	vector<vector<Point>> cont;
+	findContours(mask, cont, RETR_EXTERNAL, CHAIN_APPROX_NONE);
+
+	Mat dest = img.clone(); // leklónozzuk az eredeti képet ,mert erre rajzalunk és nem az eredetire
+	for (int i = 0; i < cont.size(); ++i) 
+	{
+		vector<Point> approx_cont;
+		approxPolyDP(cont[i], approx_cont, 10, true);
+
+		drawContours(dest, cont, i, Scalar(rand() & 255, rand() & 255, rand() & 255), 2);
+		
+		polylines(dest, approx_cont, true, Scalar(0, 0, 255), 2);
+		putText(dest, to_string(approx_cont.size()), cont[i][0], cv::FONT_HERSHEY_SIMPLEX, 1.0,Scalar(0, 255, 0));
+	}
+
+	cout << cont.size() << endl;
+
+	imshow("img", img);
+	//imshow("mask", mask);
+	imshow("mask", dest);
+
+	waitKey();
+
+	return 0;
+}
+
+//sas videó képsorozat mentése
+#include <iostream>
+#include <opencv2/core.hpp>
+#include <opencv2/highgui.hpp>
+#include <opencv2/imgproc.hpp>
+
+using namespace std;
+using namespace cv;
+
+
+int main() {
+	VideoCapture cap;
+	cap.open("sas.avi");
+
+	if (!cap.isOpened())
+	{
+		cout << "Nem nyitható meg" << endl;
+		exit(-1);
+	}
+
+	Mat img, mask, gray, dest, mask2;
+	int index = 1;
+	while (1)
+	{
+		cap >> img;
+		if (img.empty())
+		{
+			break;
+		}
+
+		cvtColor(img, gray, COLOR_BGR2GRAY);
+		inRange(gray, 100, 155, mask);
+
+		dest = img.clone();
+		medianBlur(mask, mask, 5);
+		erode(mask, mask2, getStructuringElement(MORPH_ELLIPSE, Size(15, 15)));
+
+		Mat sas_mask = 255 - mask2;
+
+		vector<vector<Point>> cont;
+		findContours(sas_mask, cont, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
+
+		Rect r = boundingRect(cont[0]);
+		imshow("sas", img(r));
+		imshow("sas_maszk", sas_mask);
+		imwrite("sas_" + to_string(index) + ".png", img(r));
+		++index;
+		//imshow("mask", mask2);
+		waitKey(93);
+	}
+	return 0;
+}
+
+
+//Kontúr hierarchia, gyerek szülő kapcsolata (11.dia)
+#include <iostream>
+#include <opencv2/core.hpp>
+#include <opencv2/highgui.hpp>
+#include <opencv2/imgproc.hpp>
+
+using namespace std;
+using namespace cv;
+
+
+int main() {
+	Mat img = imread("sajt.png", IMREAD_COLOR);
+	Mat gray, mask;
+	cvtColor(img, gray, COLOR_BGR2GRAY);
+	threshold(gray, mask, 250, 255, THRESH_BINARY_INV);
+	medianBlur(mask, mask, 5);
+
+	vector<vector<Point>> cont;
+	vector<Vec4i> hier;
+	//findContours(mask, cont, RETR_LIST, CHAIN_APPROX_NONE); //RETR_LIST => minden kontúr megkapunk a képről  egyetlen egy listában
+	findContours(mask, cont, hier, RETR_TREE, CHAIN_APPROX_NONE);
+
+	Mat dest = img.clone();
+	double sajt_terulet = 0;
+	double levego = 0;
+	for (int i = 0; i < cont.size(); ++i)
+	{
+		if (hier[i][3] == -1)
+		{
+			drawContours(dest, cont, i, Scalar(0, 255, 0), 2);
+			sajt_terulet += contourArea(cont[i]);
+		}
+		else
+		{
+			drawContours(dest, cont, i, Scalar(0, 0, 255), 2);
+			levego += contourArea(cont[i]);
+		}
+	}
+	cout << levego / sajt_terulet << endl;
+	cout << "tiszta terület: " << sajt_terulet - levego << endl;
+
+
+	cout << "kontúr területe: " << cont.size() << endl;
+
+	imshow("img", img);
+	imshow("mask", mask);
+	imshow("mask", dest);
+
+	waitKey();
+
+	return 0;
+}
+
+//Ennyit tudok csak írni, hogy 14.dia
+#include <iostream>
+#include <opencv2/core.hpp>
+#include <opencv2/highgui.hpp>
+#include <opencv2/imgproc.hpp>
+
+using namespace std;
+using namespace cv;
+
+
+int main() {
+	Mat img = imread("gumialatet3.jpg", IMREAD_COLOR);
+	Mat gray, mask;
+	cvtColor(img, gray, COLOR_BGR2GRAY);
+	threshold(gray, mask, 250, 255, THRESH_BINARY_INV);
+	medianBlur(mask, mask, 5);
+
+	vector<vector<Point>> cont;
+	vector<Vec4i> hier;
+	findContours(mask, cont, hier, RETR_CCOMP, CHAIN_APPROX_NONE); // RETR_TREE esetén írjuk át az if-ben 1-re azértéket (vagy csak félrehallottam xd)
+	Mat dest = img.clone();
+
+	int db = 0;
+	for (int i = 0; i < cont.size(); ++i)
+	{
+		if (hier[i][3] == -1)
+		{
+			drawContours(dest, cont, i, Scalar(0, 255, 0), 2);
+			db++;
+		}
+		else
+		{
+			drawContours(dest, cont, i, Scalar(0, 0, 255), 2);
+		}
+	}
+
+	cout << "Darabok száma: " << db << endl;
+	imshow("img", img);
+	imshow("dest", dest);
+
+
+	waitKey();
+
+	return 0;
+}
+
+//Na eddig kellett a zh anyaga, ja amúgy ez konvex burok feladat
+#include <iostream>
+#include <opencv2/core.hpp>
+#include <opencv2/highgui.hpp>
+#include <opencv2/imgproc.hpp>
+
+using namespace std;
+using namespace cv;
+
+
+int main() {
+	Mat img = imread("objektumok.png", IMREAD_COLOR);
+	Mat gray, mask;
+	cvtColor(img, gray, COLOR_BGR2GRAY);
+	threshold(gray, mask, 250, 255, THRESH_BINARY);
+	//medianBlur(mask, mask, 5);
+
+	vector<vector<Point>> cont;
+	findContours(mask, cont, RETR_EXTERNAL, CHAIN_APPROX_NONE);
+	Mat dest = img.clone();
+	drawContours(dest, cont, -1, Scalar(0, 255, 0), 2);
+
+	for (int i = 0; i < cont.size(); ++i)
+	{
+		vector<Point> hull;
+		convexHull(cont[i], hull, false, true); // pontokat ad vissza
+		//drawContours(dest, cont, i, Scalar(0, 255, 0), 2);
+		polylines(dest, hull,  true, Scalar(0, 0, 255), 2);
+	}
+
+	imshow("img", img);
+	imshow("dest", dest);
+
+
+	waitKey();
+
+	return 0;
+}
