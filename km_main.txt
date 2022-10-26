@@ -1,0 +1,585 @@
+#include <iostream>
+#include <opencv2/core.hpp>
+#include <opencv2/highgui.hpp>
+#include <opencv2/imgproc.hpp>
+
+using namespace std;
+using namespace cv;
+
+#pragma once
+class Solver
+{
+#pragma region Tartalomjegyzek
+	/*
+		
+	XD
+	
+	
+	
+	*/
+#pragma endregion
+	public:
+
+		void kuramaMasol(const Mat fg, Mat& bg) {
+			Vec3b c;
+			resize(bg, bg, fg.size());
+			for (int i = 0; i < fg.rows; ++i) {
+				for (int j = 0; j < fg.cols; ++j) {
+					c = fg.at<Vec3b>(i, j);
+					if (c[0] < 245 || c[1] < 245 || c[2] < 245) {
+						bg.at<Vec3b>(i, j) = c;
+					}
+				}
+			}
+		}
+
+		/// <summary>
+		/// Mini kurama masolo
+		/// </summary>
+		/// <param name="fg">eloterkep</param>
+		/// <param name="bg">hatterkep (InputOutput)</param>
+		void kuramaMasol2(const Mat fg, Mat& bg) {
+
+			Vec3b c;
+			Mat tmp;
+
+			//Kuramat zsugoritjuk 
+			//(megj.: ha eredetileg 4-gyel oszthato a kep akkor fg.Size()/4-es is ok, de ellenorzes nelkul
+			// kockazatos
+			resize(fg, tmp, Size(fg.cols / 4, fg.rows / 4));
+
+			// az offsx biztositja majd, hogy a kep kozepere keruljon kurama vizszintes iranyban
+			int offsx = bg.cols / 2 - tmp.cols / 2;
+			// a fuggolegest ugy allitjuk, hogy "rauljon" a foldre
+			int offsy = bg.rows / 2 + 50;
+
+			for (int i = 0; i < tmp.rows; ++i) {
+				for (int j = 0; j < tmp.cols; ++j) {
+					c = tmp.at<Vec3b>(i, j);
+					if (c[0] < 245 || c[1] < 245 || c[2] < 245) {
+						if (i + offsy < bg.rows and j + offsy < bg.cols)
+							bg.at<Vec3b>(i + offsy, j + offsx) = c;
+					}
+				}
+			}
+			// egy kis elmosas, errol majd kesobb, egyelore eleg annyi, 
+			// hogy beleolvasztja egy picit Kuramat a kornyezetebe
+			cv::GaussianBlur(bg, bg, Size(5, 5), 1.2);
+		}
+
+		/*
+			Olvassa be gombokat tartalmazó képet. (kepek/color_buttons.jpg)
+			[Konvertálja a képet HSV színtérbe.]  
+			Másolja át a zöld gombokat egy másik, azonos méretű, fekete képre. 
+			Jelenítse meg az eredményt egy akármi nevű ablakban.
+		*/
+		static int F1() {
+			Mat gombok = imread("kepek/color_buttons.jpg", IMREAD_COLOR);
+			Mat fekete = Mat::zeros(gombok.size(), CV_8UC3); //készítünk egy üres hátteret
+			Mat hsv;
+			cvtColor(gombok, hsv, COLOR_BGR2HSV); // a képet HSV képpé konvertáljuk, így külön csatorna a hue, saturation, value
+			Mat mask;
+			Scalar ah(22, 5, 0); //skalárként adjuk meg az alsó határ színét
+			Scalar fh(80, 255, 180); //felső határ
+			inRange(hsv, ah, fh, mask); //az alsó és a felső határt felhasználva maszkot képez
+			//És most erodeoljuk és dilatáljuk a maskot hogy eltunjenek a random zajok a feketeségből
+			medianBlur(mask, mask, 5);
+			erode(mask, mask, getStructuringElement(MORPH_ELLIPSE, Size(8, 8)));
+			dilate(mask, mask, getStructuringElement(MORPH_ELLIPSE, Size(8, 8)));
+
+			gombok.copyTo(fekete, mask); //másoljuk a zöld gombokat a háttérre a maszk segítségével
+
+
+			imshow("original", gombok);
+			imshow("akármi", fekete);
+			return 0;
+		}
+		/*Olvassa be gombokat tartalmazó képet.
+		[Konvertálja a képet HSV színtérbe.] 
+		Őrizze meg a zöld gombokat a képen, a kép többi pontját pedig állítsa pirosra. 
+		Jelenítse meg az eredményt egy XXX nevű ablakban.
+		*/
+		static int F2() {
+			Mat gombok = imread("kepek/color_buttons.jpg", IMREAD_COLOR);
+			Mat fekete = Mat::zeros(gombok.size(), CV_8UC3); //készítünk egy üres 
+			fekete.setTo(Scalar(0, 0, 255));		//UGYAN AZ MINT AZ 1-ES EZT A SORT LESZÁMÍTVA....
+			Mat hsv;
+			cvtColor(gombok, hsv, COLOR_BGR2HSV); // a képet HSV képpé konvertáljuk, így külön csatorna a hue, saturation, value
+			Mat mask;
+			Scalar ah(22, 5, 0); //skalárként adjuk meg az alsó határ színét
+			Scalar fh(80, 255, 180); //felső határ
+			inRange(hsv, ah, fh, mask); //az alsó és a felső határt felhasználva maszkot képez
+			//És most erodeoljuk és dilatáljuk a maskot hogy eltunjenek a random zajok a feketeségből
+			medianBlur(mask, mask, 5);
+			erode(mask, mask, getStructuringElement(MORPH_ELLIPSE, Size(8, 8)));
+			dilate(mask, mask, getStructuringElement(MORPH_ELLIPSE, Size(8, 8)));
+
+			gombok.copyTo(fekete, mask); //másoljuk a zöld gombokat a háttérre a maszk segítségével
+
+
+			imshow("original", gombok);
+			imshow("XXX", fekete);
+			return 0;
+		}
+		/*
+		Olvassa be valamelyik gombot tartalmazó képet.
+		Küszöbölje a képet úgy, hogy az eredménykép fekete-fehér legyen. A gomb legyen az előtér. A küszöbértéket konstans értékkel adja meg.
+		Mentse el az eredményt result.png néven.
+		*/
+		static int F3() {
+			Mat gomb = imread("kepek/color_button1.jpg",IMREAD_GRAYSCALE);
+			threshold(gomb, gomb, 120, 255, THRESH_BINARY_INV); //A gomb fehér
+			//imshow("asd", gomb);
+			imwrite("kepek/result.png", gomb); //Kép mentése
+			return 0;
+		}
+#pragma region Nem_jo_lmao
+		/*
+		Olvassa be valamelyik gombot tartalmazó képet.
+		Küszöbölje a képet automatikus eljárással úgy, hogy az eredménykép fekete-fehér legyen és a gomb legyen fehér az eredmény téren. ?????????????? ilyen nincs he
+		Mentse el az eredményt valami.jpg néven.
+		*/
+		static int F4() {
+			Mat gomb = imread("kepek/color_button1.jpg", IMREAD_GRAYSCALE);
+			int blockSize = 5;
+			cv::adaptiveThreshold(gomb, gomb, 255, cv::ADAPTIVE_THRESH_MEAN_C, cv::THRESH_BINARY_INV, blockSize, 2);
+			imshow("valami", gomb);
+
+			return 0;
+		}
+#pragma endregion
+		/*
+		Olvassa be valamelyik gombot tartalmazó képet szürkeskálában.
+		Méretezze át a képet az eredeti méretének duplájára. 
+		Alkalmazzon speciális küszöbölést, mely megőrzi az előteret, a háttérpontokat viszont kinullázza ("törli").
+		Jelenítse meg az eredményt.
+		*/
+		static int F5() {
+			Mat gomb = imread("kepek/color_button1.jpg", IMREAD_GRAYSCALE);
+			resize(gomb, gomb, Size(), 2, 2, INTER_CUBIC);	//Átméretezés
+			threshold(gomb, gomb, 120, 255, THRESH_TOZERO_INV); //"törlés"
+			imshow("specko", gomb);
+			return 0;
+		}
+		/*
+		Olvassa be a két képet, ami egy-egy gombot tartalmaz. 
+		Mossa el mindkét gombot egy 7x7-es mediánszűrővel.
+		Konvertálja a képeket valóssá.
+		Váltsa át mindkét képet Lab színtérbe.
+		Számítsa ki, hogy mennyi a két kép középpontjai között a teljes színkülönbség. Az eredményt (egy valós szám) a standard outputra írja ki.
+		Segítség: Az at függvénnyel kérje le a két lab kép középső pixelét. Figyeljen arra, hogy a konvertálás miatt ez Vec3f típusú. 
+		*/
+
+		// Lab teljes színkülönbség: delta_E = sqrt(delta_L^2 + delta_a^2 + delta_b^2) 
+		//L - villagossag (0,100)
+		//a - zöld-vörös tengely (-100,100)
+		//b - kék-sárga tengely (-100,100)
+
+		//Színezet változás: delta_H = sgrt(delta_E^2 - delta_L^2 - delta_C^2)
+		//
+		//Telítettség (Chroma) C = sgrt(a^2 + b^2)
+		//
+		//Színezeti szög átszámítása : h_ab° = arctg(b/a)
+		static int F6() {
+			Mat gomb1 = imread("kepek/color_button1.jpg", IMREAD_COLOR);
+			Mat gomb2 = imread("kepek/color_button2.jpg", IMREAD_COLOR);
+			medianBlur(gomb1, gomb1, 7);
+			medianBlur(gomb2, gomb2, 7);
+			gomb1.convertTo(gomb1, CV_32FC3, 1 / 255.0); // 3 channel 32-bit float
+			gomb2.convertTo(gomb2, CV_32FC3, 1 / 255.0); // 3 channel 32-bit float
+			cvtColor(gomb1, gomb1, COLOR_BGR2Lab);
+			cvtColor(gomb2, gomb2, COLOR_BGR2Lab);
+
+			Vec3f g1m = gomb1.at<Vec3f>(gomb1.rows / 2, gomb1.cols / 2);
+			Vec3f g2m = gomb2.at<Vec3f>(gomb2.rows / 2, gomb2.cols / 2);
+
+			float d_L2 = powf(g1m[0] - g2m[0], 2);
+			float d_a2 = powf(g1m[1] - g2m[1], 2);
+			float d_b2 = powf(g1m[2] - g2m[2], 2);
+
+			float diff = sqrtf(d_L2 + d_a2 + d_b2);
+
+			cout << diff << endl;
+			return 0;
+		}
+#pragma region Nem_Jo_lmao
+		/*
+		Olvassa be a zászlót (usa_flag) tartalmazó képet.
+		A zászlót őrizze meg. A hátteret törölje. A zászlórúd törléséről vagy megőrzéséről szabadon dönthet. 
+		Jelenítse meg az eredményképet. 
+
+		Segítség: összetett feltételre/több maszk használatára is szüksége lehet.
+		*/
+		static int F7() {
+			Mat flag = imread("kepek/usa_flag.jpg", IMREAD_COLOR);
+			//Törölni a világos kéket és világos zöldet
+			Mat dest = Mat::zeros(flag.size(), CV_8UC3);
+			Mat blue_mask;
+			Scalar b_ah(150, 100, 100);
+			Scalar b_fh(255, 200, 200);
+			inRange(flag, b_ah, b_fh, blue_mask);
+			bitwise_not(blue_mask, blue_mask); //Inverting mask
+
+			medianBlur(blue_mask,blue_mask, 5);
+			erode(blue_mask, blue_mask, getStructuringElement(MORPH_ELLIPSE, Size(10, 10)));
+			dilate(blue_mask, blue_mask, getStructuringElement(MORPH_ELLIPSE, Size(10, 10)));
+
+			Mat green_mask;
+			for (int i = 180; i > 0; i-=10)
+			{
+				Scalar g_ah(0, 0, 0);
+				Scalar g_fh(i, 255, 180);
+				inRange(flag, g_ah, g_fh, green_mask);
+				medianBlur(green_mask, green_mask, 5);
+				erode(green_mask, green_mask, getStructuringElement(MORPH_ELLIPSE, Size(50, 50)));
+				dilate(green_mask, green_mask, getStructuringElement(MORPH_ELLIPSE, Size(50, 50)));
+				bitwise_not(green_mask, green_mask);
+
+				Mat mask = green_mask - blue_mask;
+				bitwise_and(green_mask, blue_mask, mask); //Maskok metszete
+
+				flag.copyTo(dest, mask);
+				imshow("img" + std::to_string(i), dest);
+				namedWindow("img" + std::to_string(i), WINDOW_NORMAL);
+			}
+			return 0;
+		}
+#pragma endregion
+		/*
+		• A program a felhasználótól bekéri a szerkesztendő kép teljes elérési útvonalát, majd
+		megnyitja ezt a képfájlt. (1p)
+		• A program elvégzi automatikusan a szükséges képkorrekciós műveleteket. (3p)
+		• A program a felhasználó által megadott érték alapján küszöbölést hajt végre. (2p)
+		• A program lehetőséget biztosít a felhasználó számára a kinyert rész színparamétereinek
+		(színezet, színtelítettség és világosság) megadására. (4p)
+		• A program eredményként kimenti a felhasználó által megadott elérési útvonalra a
+		szerkesztett képet JPEG formátumban, 92%-os minőségi arányban. (2p)
+		*/
+		static int F_Bence_1() {
+			/*
+			Mat dest, img = imread("kepek/zh.jpg", IMREAD_GRAYSCALE);
+			imshow("zh", img);
+			int sugar = 20, C = 0;
+			createTrackbar("sugar", "zh", &sugar, 25);
+			createTrackbar("C", "zh", &C, 50);
+			int q, meret;
+			while ((q = waitKey(1)) != 'q')
+			{
+				meret = max(2 * sugar + 1, 3);
+				adaptiveThreshold(img, dest, 255, ADAPTIVE_THRESH_MEAN_C, THRESH_BINARY, meret, C - 25);
+				imshow("zh", dest);
+			}
+			*/
+#pragma region Bence_Féle
+			cv::Mat img = cv::imread("kepek/zh.jpg", 1);
+			cv::Mat filtered;
+			cv::Mat hsv, mask, masked;
+			cv::Mat splitted[3], tempmask[3], finalmask, result;
+
+			cv::GaussianBlur(img, filtered, cv::Size(5, 5), 0.5);
+			cv::medianBlur(img, filtered, 3);
+
+			cv::cvtColor(filtered, hsv, cv::COLOR_RGB2HSV);
+			unsigned char n = 0;
+
+			std::cin >> n;
+			cv::split(hsv, splitted);
+			cv::threshold(splitted[0], mask, n, 255, cv::THRESH_BINARY);
+
+			for (int i = 0; i < 3; ++i)
+				tempmask[i] = mask.clone();
+
+			cv::merge(tempmask, 3, finalmask);
+			cv::bitwise_and(img, finalmask, masked);
+
+			cv::cvtColor(masked, hsv, cv::COLOR_RGB2HSV);
+			unsigned char hue = 0, sat = 0, value = 0;
+			cout << "Give hue" << endl;
+			std::cin >> hue;
+			cout << "Give sat" << endl;
+			std::cin >> sat;
+			cout << "Give value" << endl;
+			std::cin >> value;
+
+			for (int i = 0; i < img.rows; ++i) {
+				for (int j = 0; j < img.cols; ++j) {
+					cv::Vec3b pixelGroup = hsv.at<cv::Vec3b>(i, j);
+					pixelGroup[0] += hue;
+					pixelGroup[1] += sat;
+					pixelGroup[2] += value;
+
+					hsv.at<cv::Vec3b>(i, j) = pixelGroup;
+				}
+			}
+
+			cv::cvtColor(hsv, result, cv::COLOR_HSV2RGB);
+
+			std::vector<int> formatParameters_jpg;
+			formatParameters_jpg.push_back(cv::IMWRITE_JPEG_QUALITY);
+			formatParameters_jpg.push_back(92);
+			cv::imwrite("out.jpg", result, formatParameters_jpg);
+
+			cv::imshow("img", img);
+			cv::imshow("result", result);
+#pragma endregion
+			return 0;
+		}
+		/*
+		Olvassa be a pinguen_colony2.png képet és határozza meg, hogy hány pingvin van a képen. Jelöljön meg minden pingvint körrel vagy más jelölővel, hogy ránézésre is ellenőrizni lehessen a program helyességét. 
+		*/
+		static int AF1() {
+			Mat gray,img = imread("kepek/pinguen_colony2.png", IMREAD_COLOR);
+			//Tisztogatás
+			cvtColor(img, gray, COLOR_BGR2GRAY);
+			threshold(gray, gray, 50, 255, THRESH_BINARY_INV);
+			medianBlur(gray, gray, 5);
+			dilate(gray, gray, getStructuringElement(MORPH_ELLIPSE, Size(5, 5)));
+
+			vector<Point> pengiuns; //Pingvinek ~középpontjai
+			vector<vector<Point>> penguins_conts; //Pingvinek konturpontjai
+			findContours(gray, penguins_conts, RETR_LIST, CHAIN_APPROX_SIMPLE); //RETR_LIST nincs kapcsolat az objektumok közt, C_A_SIMPLE vagy NONE itt elég a simple
+
+			//Konturpontok segitségével pingvinek "középponjainak megkresesése"
+			for (int i = 0; i < penguins_conts.size(); i++)
+			{
+				int x = 0, y = 0;
+				for (int j = 0; j < penguins_conts[i].size(); j++)
+				{
+					x += penguins_conts[i][j].x;
+					y += penguins_conts[i][j].y;
+				}
+				x /= penguins_conts[i].size();
+				y /= penguins_conts[i].size();
+				pengiuns.push_back(Point{ x,y });
+			}
+			//Körök rajzolása
+			for (int i = 0; i < pengiuns.size(); i++)
+			{
+				circle(img, pengiuns[i], 10, Scalar(0, 255, 0));
+			}
+			cout << pengiuns.size() << endl; //Pingvinek darabszáma
+			/* Kontur kirajzolása -  feladat nem kéri
+			for (int i = 0; i < penguins_conts.size(); i++)
+			{
+				drawContours(
+					img,
+					penguins_conts,
+					i,
+					Scalar(0,0,255));
+			}
+			*/
+			imshow("img", img);
+
+			return 0;
+		}
+
+		/*
+		Írjon programot, mely beolvassa az ablakok.jpg képet és megszámolja, hogy hány ablakból árad ki a fény. Ügyeljen rá, hogy a keretek miatt ne számoljon egy ablakot többször. Rajzolja is körbe a világosnak vélt ablakokat, hogy az eredményt ránézésre is ellenőrizni lehessen. 
+		*/
+		static int AF2() {
+			//Beolvasás
+			Mat mask,gray, img = imread("kepek/ablakok.jpg", IMREAD_COLOR);
+			//Konvertálás
+			cvtColor(img, gray, COLOR_BGR2GRAY);
+			//Thresholdozás
+			threshold(gray, mask, 125, 255, THRESH_BINARY);
+			//Tisztogatás, keretek megszüntetése
+			medianBlur(mask, mask, 7);
+			dilate(mask, mask, getStructuringElement(MORPH_RECT, Size(8, 8)));
+			//Kontur
+			vector<vector<Point>> contur;
+			findContours(mask, contur, RETR_LIST, CHAIN_APPROX_NONE);
+			for (int i = 0; i < contur.size(); i++)
+			{
+				if (contur[i].size() > 30)//contourArea(contur[i]) > 1000 ink area
+				{
+					drawContours(img, contur, i, Scalar(0, 0, 255), 2);
+				}
+			}
+			cout << contur.size() << endl;
+			imshow("img", img);
+			return 0;
+		}
+		/*
+		 Becsülje meg a napozó rozmárok számát az agyarak száma alapján. 
+		Olvassa be a walrus_jeff_foot.png képet. 
+		Küszöbölje a kék csatorna alapján (ne sajnálja az időt a megfelelő küszöbérték megkeresésére)
+		A külső körvonalakat gyűjtse össze a küszöbölt képen.
+		Minden körvonalra:
+		határozza meg a minimális befoglaló téglalapot az alábbi függvény segítségével:
+		cv::RotatedRect minAreaRect(cv::InputArray points);
+		ha a kapott téglalap hosszabbik oldala legalább kétszer olyan hosszú, mint a rövidebb oldal, akkor az adott kontúrt tekintse rozmáragyarnak, növeljen egy számlálót és rajzolja ki zölddel a kontúrt.  Egyébként rajzolja ki kékkel a kontúrt az eredeti képre. 
+		Megj.: Szükség esetén (pl.: ha a küszöbölése nem az igazi) a kontúr területe/kerülete alapján is kidobhat kontúrokat ennél a lépésnél. 
+		Írja ki a rozmárok becsült számát (normál esetben egy rozmár 2 agyarral bír).
+		/A "becsült" szó arra utal, hogy ennél a feladatnál elfogadhatóak hibák: nem minden rozmárnál látható a két agyar, a küszöbölés során is elveszhet egy-egy barnásabb agyar, és bejöhet egy-két fehérnek látszó terület, bár ezeket szűri majd valamennyire. A detektált agyarak száma alapján csak alsó becslés adható. /
+		*/
+		static int AF3() {
+			Mat img = imread("kepek/walrus_jeff_foott.png", IMREAD_COLOR);
+
+			vector<Mat> chs;
+			split(img, chs);
+			//Kék a 0
+			Mat dest;
+			threshold(chs[0], dest, 130, 255, THRESH_BINARY);
+			medianBlur(dest, dest, 3);
+			vector<vector<Point>> conts;
+			findContours(dest, conts, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
+			int count = 0;
+			for (int i = 0; i < conts.size(); i++)
+			{
+				RotatedRect rect = minAreaRect(conts[i]);
+				
+				if (std::min(rect.size.width,rect.size.height)*2 >= std::max(rect.size.width,rect.size.height)) {
+					count++;
+					drawContours(img, conts, i, Scalar(0, 255, 0));
+				}
+				else {
+					drawContours(img, conts, i, Scalar(255, 0,0));
+				}
+				
+
+			}
+			cout<< count/2 << endl;
+			imshow("prííí", img);
+			imshow("og", chs[0]);
+			imshow("dest", dest);
+			return 0;
+		}
+		/*
+		Találja meg a képen a kókuszos fánkokat a fank.jpg, majd rajzolja őket körbe 3 pixel vastag fekete vonallal. Jelenítse meg az eredményt. (Megj. Nem elvárt a fekete vonal precíz illeszkedése. )
+		*/
+		static int AF4() {
+			Mat img = imread("kepek/fank.jpg", IMREAD_COLOR);
+			Mat gray;
+			cvtColor(img, gray, COLOR_BGR2GRAY);
+			threshold(gray, gray, 240, 255, THRESH_BINARY);
+			dilate(gray, gray, getStructuringElement(MORPH_ELLIPSE, Size(80, 80)));
+			//erode(gray, gray, getStructuringElement(MORPH_ELLIPSE, Size(30, 30)));
+			vector<vector<Point>> contur;
+			findContours(gray, contur, RETR_EXTERNAL, CHAIN_APPROX_NONE);
+			for (int i = 0; i < contur.size(); i++)
+			{
+				if (contourArea(contur[i]) > 20000)
+				{
+					drawContours(img, contur, i, Scalar(0, 0, 0), 3);
+				}
+			}
+
+			imshow("asd", img);
+			return 0;
+		}
+		/*
+		Találja meg az összes fánkot a fank.jpg képen, majd egyesével mentse le a fánkokat tartalmazó képrészleteket (befoglaló téglalap által megadott rész) egy mappába. 
+		*/
+		static int AF5() {
+			Mat img = imread("kepek/fank.jpg", IMREAD_COLOR);
+			//Mat gray;
+			//cvtColor(img, gray, COLOR_BGR2GRAY);
+			vector<Mat> chs;
+			split(img, chs);
+			Mat dest;
+			threshold(chs[1],dest,120,255,THRESH_BINARY);
+			medianBlur(dest, dest, 5);
+
+
+			Mat gray;
+			cvtColor(img, gray, COLOR_BGR2GRAY);
+
+			vector<Vec3f> circles;
+			HoughCircles(gray, circles, HOUGH_GRADIENT,2,50,50,50,90,100);
+			int i = 0;
+			for (Vec3f c : circles) {
+
+				circle(img, Point(c[0], c[1]), c[2],Scalar(255,0,0));
+
+				Rect r = Rect(c[0]-c[2],c[1]-c[2],c[2]*2,c[2]*2);
+				/*
+				c[0] = Kör x koordinátája
+				c[1] = Kör y koordinátája
+				c[2] = Kör sugara
+				c[0]-c[2] = kör x - kör sugár // azaz a téglalap bal felső pontjának x koordinátája
+				. y hasonlóan
+				. szélesség és magasság az kétszer a sugár
+				*/
+
+				imwrite("fankok/fank_" + to_string(i) + ".jpg",img(r));
+				i++;
+			}
+
+
+			imshow("img", img);
+
+
+
+
+
+
+			//imshow("blue", chs[0]);
+			//imshow("gre", chs[1]);
+			//imshow("dest", dest);
+			return 0;
+		}
+		/*
+		 Másolja oda a lekicsinyített Jerry-t (természetesen a zöld háttértől mentesen) a snow.avi minden képkockájának felső sarkába. Az eredményképet jelenítse meg, elmentenie nem kell. 
+		*/
+		static int AF6() {
+			Mat jerry = imread("kepek/jerry_moment.jpg",IMREAD_COLOR);
+			Mat mask;
+			vector<Mat> chs;
+			split(jerry, chs);
+			threshold(chs[1], mask, 245, 255, THRESH_BINARY);
+			medianBlur(mask, mask, 3);
+			dilate(mask, mask, getStructuringElement(MORPH_ELLIPSE, Size(5, 5)));
+			vector<vector<Point>> cont;
+			findContours(mask, cont, RETR_EXTERNAL, CHAIN_APPROX_NONE);
+
+			//Mat dest = jerry.clone(); // leklónozzuk az eredeti képet ,mert erre rajzalunk és nem az eredetire
+
+			//Talán egy jó kis kontúr keresés vagy idk, de körbe lett rajzolva a kutyi más színnel is itt
+			for (int i = 0; i < cont.size(); ++i)
+			{
+				//if (cont[i].size() > 500)
+				if (contourArea(cont[i]) > 1000)
+				{
+					drawContours(jerry, cont, i, Scalar(0,0,0), 2);
+				}
+
+			}
+			cvtColor(mask, mask, COLOR_GRAY2BGR);
+			Mat mask2 = jerry-mask;
+			//morphologyEx(mask, mask, MORPH_CLOSE, getStructuringElement(MORPH_ELLIPSE,Size(10,10)));
+			//MORPH_CLOSE dilate + erode
+			imshow("img", jerry);
+			imshow("asd", mask);
+			imshow("asd2", mask2);
+			imshow("gr", chs[1]);
+
+
+
+
+			/*
+			VideoCapture cap;
+			cap.open("kepek/snow.avi");
+			if (!cap.isOpened())
+			{
+				cout << "Nem nyithato meg!" << endl;
+				exit(-1);
+			}
+			Mat frame;
+
+			while (1)
+			{
+				cap >> frame;
+				if (frame.empty())
+				{
+					break;
+				}
+				
+				imshow("video", frame);
+				waitKey(33);
+			}
+			*/
+			return 0;
+		}
+};
+
